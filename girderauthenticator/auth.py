@@ -1,3 +1,4 @@
+import dateutil.parser
 import json
 from jupyterhub.handlers import BaseHandler
 from jupyterhub.auth import Authenticator
@@ -23,7 +24,7 @@ class GirderOAuthLoginHandler(BaseHandler):
         )
         with urlopen(url) as resp:
             providers = json.loads(resp.read().decode('utf-8'))
-            return providers[self.authenticator.girder_provider]
+            return providers[self.authenticator.login_service]
 
     def _render(self, login_error=None, username=None):
         return self.render_template(
@@ -43,19 +44,28 @@ class GirderOAuthLoginHandler(BaseHandler):
         if token and not user:
             username = None
             if token:
-                me_url = '%s/user/me' % self.authenticator.api_url
-                girder_token = token
-                headers = {
-                    'Girder-Token': girder_token
-                }
+                me_url = self.authenticator.api_url + '/user/me'
+                headers = {'Girder-Token': token}
                 http_client = AsyncHTTPClient()
                 r = yield http_client.fetch(me_url, headers=headers)
                 if r.code == 200:
                     response_json = json.loads(r.body.decode('utf8'))
                     if response_json is not None:
                         username = response_json['login']
-                        # potentially store 'girder_token'
                         user = self.user_from_username(username)
+
+                token_url = self.authenticator.api_url + '/token/current'
+                r = yield http_client.fetch(token_url, headers=headers)
+                if r.code == 200:
+                    response_json = json.loads(r.body.decode('utf8'))
+                    if response_json is not None:
+                        expires = response_json['expires']
+                        self._set_cookie(
+                            'girderToken',
+                            token,
+                            expires=dateutil.parser.parse(expires),
+                            encrypted=False,
+                        )
 
         if user:
             self.set_login_cookie(user)
@@ -74,8 +84,9 @@ class GirderOAuthAuthenticator(Authenticator):
     """Accept a girderToken via query parameter."""
 
     login_service = Unicode(
-        'GirderOAuth',
-        config=False
+        default_value='Globus',
+        help='Girder OAuth Provider',
+        config=True
     )
 
     jupyterhub_url = Unicode(
@@ -87,12 +98,6 @@ class GirderOAuthAuthenticator(Authenticator):
     api_url = Unicode(
         help='The url to the girder server to use for token validation',
         default_value='https://girder.dev.wholetale.org/api/v1',
-        config=True
-    )
-
-    girder_provider = Unicode(
-        help='Girder OAuth Provider',
-        default_value='Globus',
         config=True
     )
 

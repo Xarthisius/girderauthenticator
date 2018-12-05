@@ -26,5 +26,5 @@ You'll also need to set some configuration options including the FQDN of your Ju
 ```
 c.GirderOAuthAuthenticator.jupyterhub_url = 'https://jupyterhub.local.wholetale.org'
 c.GirderOAuthAuthenticator.api_url = 'https://girder.local.wholetale.org/api/v1'
-c.GirderOAuthAuthenticator.girder_provider = 'Globus'
+c.GirderOAuthAuthenticator.login_service = 'Globus'
 ```

@@ -10,6 +10,7 @@ setup(
     license='BSD-3',
     packages=['girderauthenticator'],
     install_requires=[
+        'python-dateutil',
         'jupyterhub',
     ]
 )
